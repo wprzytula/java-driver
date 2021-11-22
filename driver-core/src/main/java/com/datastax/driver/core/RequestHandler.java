@@ -40,6 +40,7 @@ import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import com.datastax.driver.core.policies.RetryPolicy;
 import com.datastax.driver.core.policies.RetryPolicy.RetryDecision.Type;
 import com.datastax.driver.core.policies.SpeculativeExecutionPolicy.SpeculativeExecutionPlan;
+import com.datastax.driver.core.tracing.TracingInfo;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
@@ -95,6 +96,8 @@ class RequestHandler {
   private final AtomicBoolean isDone = new AtomicBoolean();
   private final AtomicInteger executionIndex = new AtomicInteger();
 
+  private final TracingInfo tracingInfo;
+
   private Iterator<Host> getReplicas(
       String loggedKeyspace, Statement statement, Iterator<Host> fallback) {
     ProtocolVersion protocolVersion = manager.cluster.manager.protocolVersion();
@@ -120,7 +123,8 @@ class RequestHandler {
     return replicas.iterator();
   }
 
-  public RequestHandler(SessionManager manager, Callback callback, Statement statement) {
+  public RequestHandler(
+      SessionManager manager, Callback callback, Statement statement, TracingInfo tracingInfo) {
     this.id = Long.toString(System.identityHashCode(this));
     if (logger.isTraceEnabled()) logger.trace("[{}] {}", id, statement);
     this.manager = manager;
@@ -156,6 +160,18 @@ class RequestHandler {
 
     this.timerContext = metricsEnabled() ? metrics().getRequestsTimer().time() : null;
     this.startTime = System.nanoTime();
+
+    ConsistencyLevel consistency = statement.getConsistencyLevel();
+    if (consistency == null) consistency = Statement.DEFAULT.getConsistencyLevel();
+
+    String statementType = null;
+    if (statement instanceof BatchStatement) statementType = "batch";
+    else if (statement instanceof PreparedStatement) statementType = "prepared";
+
+    this.tracingInfo = tracingInfo;
+    this.tracingInfo.setNameAndStartTime("request");
+    this.tracingInfo.setConsistencyLevel(consistency);
+    if (statementType != null) this.tracingInfo.setStatementType(statementType);
   }
 
   void sendRequest() {
@@ -273,7 +289,11 @@ class RequestHandler {
           && logger.isWarnEnabled()) {
         logServerWarnings(response.warnings);
       }
+
       callback.onSet(connection, response, info, statement, System.nanoTime() - startTime);
+
+      tracingInfo.setStatus(TracingInfo.StatusCode.OK);
+      tracingInfo.tracingFinished();
     } catch (Exception e) {
       callback.onException(
           connection,
@@ -281,6 +301,10 @@ class RequestHandler {
               "Unexpected exception while setting final result from " + response, e),
           System.nanoTime() - startTime, /*unused*/
           0);
+
+      tracingInfo.recordException(e);
+      tracingInfo.setStatus(TracingInfo.StatusCode.ERROR, e.toString());
+      tracingInfo.tracingFinished();
     }
   }
 
@@ -304,6 +328,10 @@ class RequestHandler {
     if (logger.isTraceEnabled()) logger.trace("[{}] Setting final exception", execution.id);
 
     cancelPendingExecutions(execution);
+
+    tracingInfo.recordException(exception);
+    tracingInfo.setStatus(TracingInfo.StatusCode.ERROR, exception.toString());
+    tracingInfo.tracingFinished();
 
     try {
       if (timerContext != null) timerContext.stop();
