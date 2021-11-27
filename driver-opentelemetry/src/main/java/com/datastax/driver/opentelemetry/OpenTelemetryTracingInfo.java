@@ -1,6 +1,7 @@
 package com.datastax.driver.opentelemetry;
 
 import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.tracing.PrecisionLevel;
 import com.datastax.driver.core.tracing.TracingInfo;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
@@ -11,13 +12,13 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
   private final Tracer tracer;
   private final Context context;
   private boolean tracingStarted;
-  private static final String mustBeInitMsg =
-      "TracingInfo.setStartTime must be called before TracingInfo.";
+  private final PrecisionLevel precision;
 
-  OpenTelemetryTracingInfo(Tracer tracer, Context context) {
+  OpenTelemetryTracingInfo(Tracer tracer, Context context, PrecisionLevel precision) {
     this.tracer = tracer;
     this.context = context;
-    tracingStarted = false;
+    this.precision = precision;
+    this.tracingStarted = false;
   }
 
   public Tracer getTracer() {
@@ -32,6 +33,10 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
     assert tracingStarted : "TracingInfo.setStartTime must be called before any other method";
   }
 
+  public PrecisionLevel getPrecision() {
+    return precision;
+  }
+
   @Override
   public void setNameAndStartTime(String name) {
     assert !tracingStarted : "TracingInfo.setStartTime may only be called once.";
@@ -43,6 +48,20 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
   public void setConsistencyLevel(ConsistencyLevel consistency) {
     assertStarted();
     span.setAttribute("db.scylla.consistency_level", consistency.toString());
+  }
+
+  public void setStatement(String statement) {
+    assertStarted();
+    if (currentPrecisionLevelIsAtLeast(PrecisionLevel.FULL)) {
+      span.setAttribute("db.scylla.statement", statement);
+    }
+  }
+
+  public void setHostname(String hostname) {
+    assertStarted();
+    if (currentPrecisionLevelIsAtLeast(PrecisionLevel.FULL)) {
+      span.setAttribute("net.peer.name", hostname);
+    }
   }
 
   @Override
@@ -83,5 +102,9 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
   public void tracingFinished() {
     assertStarted();
     span.end();
+  }
+
+  private boolean currentPrecisionLevelIsAtLeast(PrecisionLevel requiredLevel) {
+    return requiredLevel.comparePrecisions(precision) <= 0;
   }
 }
