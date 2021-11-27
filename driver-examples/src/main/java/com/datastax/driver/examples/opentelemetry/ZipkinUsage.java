@@ -1,16 +1,17 @@
 package com.datastax.driver.examples.opentelemetry;
 
 import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.OpenTelemetryConfiguration;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.tracing.TracingInfoFactory;
+import com.datastax.driver.opentelemetry.OpenTelemetryTracingInfoFactory;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.extension.noopapi.NoopOpenTelemetry;
 
 /**
- * Creates a keyspace and tables, and loads some data into them.
+ * Creates a keyspace and tables, and loads some data into them. Sends OpenTelemetry tracing data to
+ * Zipkin tracing backend
  *
  * <p>Preconditions: - a Scylla cluster is running and accessible through the contacts points
  * identified by CONTACT_POINTS and PORT and Zipkin backend is running and accessible through the
@@ -20,7 +21,7 @@ import io.opentelemetry.extension.noopapi.NoopOpenTelemetry;
  * already exists, it will be reused; - creates two tables "simplex.songs" and "simplex.playlists".
  * If they exist already, they will be reused; - inserts a row in each table.
  */
-public class ZipkinConfiguration {
+public class ZipkinUsage {
   static String CONTACT_POINT = "127.0.0.1";
   static int PORT = 9042;
 
@@ -31,12 +32,18 @@ public class ZipkinConfiguration {
     // Workaround for setting ContextStorage to ThreadLocalContextStorage.
     System.setProperty("io.opentelemetry.context.contextStorageProvider", "default");
 
-    ZipkinConfiguration client = new ZipkinConfiguration();
+    ZipkinUsage client = new ZipkinUsage();
 
     try {
       client.connect();
       client.createSchema();
       client.loadData();
+      System.out.println(
+          "All requests have been completed. Now you can visit Zipkin at "
+              + ZIPKIN_CONTACT_POINT
+              + ":"
+              + ZIPKIN_PORT
+              + " and examine the produced trace.");
     } finally {
       client.close();
     }
@@ -46,8 +53,7 @@ public class ZipkinConfiguration {
 
   private Session session;
 
-  private Tracer tracer =
-      NoopOpenTelemetry.getInstance().getTracerProvider().get("com.datastax.driver");
+  private Tracer tracer;
 
   /** Initiates a connection to the cluster. */
   public void connect() {
@@ -60,7 +66,8 @@ public class ZipkinConfiguration {
     OpenTelemetry openTelemetry =
         OpenTelemetryConfiguration.initializeForZipkin(ZIPKIN_CONTACT_POINT, ZIPKIN_PORT);
     tracer = openTelemetry.getTracerProvider().get("this");
-    session.setTracer(tracer);
+    TracingInfoFactory tracingInfoFactory = new OpenTelemetryTracingInfoFactory(tracer);
+    session.setTracingInfoFactory(tracingInfoFactory);
   }
 
   /** Creates the schema (keyspace) and tables for this example. */

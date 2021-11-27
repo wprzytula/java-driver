@@ -1,4 +1,4 @@
-package com.datastax.driver.core;
+package com.datastax.driver.examples.opentelemetry;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
@@ -10,15 +10,16 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 
-public interface OpenTelemetryConfiguration {
-  String SERVICE_NAME = "Scylla Java driver";
+/** Example showing how to configure OpenTelemetry for tracing with Scylla Java Driver. */
+class OpenTelemetryConfiguration {
+  private static String SERVICE_NAME = "Scylla Java driver";
 
-  static OpenTelemetry initialize(SpanExporter spanExporter) {
+  public static OpenTelemetry initialize(SpanExporter spanExporter) {
     Resource serviceNameResource =
         Resource.create(Attributes.of(ResourceAttributes.SERVICE_NAME, SERVICE_NAME));
 
     // Set to process the spans by the spanExporter.
-    SdkTracerProvider tracerProvider =
+    final SdkTracerProvider tracerProvider =
         SdkTracerProvider.builder()
             .addSpanProcessor(SimpleSpanProcessor.create(spanExporter))
             .setResource(Resource.getDefault().merge(serviceNameResource))
@@ -41,7 +42,7 @@ public interface OpenTelemetryConfiguration {
     return openTelemetry;
   }
 
-  static OpenTelemetry initializeForZipkin(String ip, int port) {
+  public static OpenTelemetry initializeForZipkin(String ip, int port) {
     String endpointPath = "/api/v2/spans";
     String httpUrl = String.format("http://%s:%s", ip, port);
 
@@ -49,12 +50,5 @@ public interface OpenTelemetryConfiguration {
         ZipkinSpanExporter.builder().setEndpoint(httpUrl + endpointPath).build();
 
     return initialize(exporter);
-  }
-
-  static OpenTelemetry initializeForZipkin() {
-    String ip = "localhost";
-    int port = 9411;
-
-    return initializeForZipkin(ip, port);
   }
 }

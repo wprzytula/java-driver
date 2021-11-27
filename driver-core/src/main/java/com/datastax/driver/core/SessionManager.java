@@ -29,6 +29,9 @@ import com.datastax.driver.core.exceptions.UnsupportedProtocolVersionException;
 import com.datastax.driver.core.policies.LoadBalancingPolicy;
 import com.datastax.driver.core.policies.ReconnectionPolicy;
 import com.datastax.driver.core.policies.SpeculativeExecutionPolicy;
+import com.datastax.driver.core.tracing.NoopTracingInfoFactory;
+import com.datastax.driver.core.tracing.TracingInfo;
+import com.datastax.driver.core.tracing.TracingInfoFactory;
 import com.datastax.driver.core.utils.MoreFutures;
 import com.google.common.base.Functions;
 import com.google.common.collect.ImmutableList;
@@ -40,7 +43,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
-import io.opentelemetry.context.Context;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -57,7 +59,6 @@ import org.slf4j.LoggerFactory;
 
 /** Driver implementation of the Session interface. */
 class SessionManager extends AbstractSession {
-
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
 
   final Cluster cluster;
@@ -70,11 +71,23 @@ class SessionManager extends AbstractSession {
   private volatile boolean isInit;
   private volatile boolean isClosing;
 
+  private TracingInfoFactory tracingInfoFactory = new NoopTracingInfoFactory();
+
   // Package protected, only Cluster should construct that.
   SessionManager(Cluster cluster) {
     this.cluster = cluster;
     this.pools = new ConcurrentHashMap<Host, HostConnectionPool>();
     this.poolsState = new HostConnectionPool.PoolState();
+  }
+
+  @Override
+  public void setTracingInfoFactory(TracingInfoFactory tracingInfoFactory) {
+    this.tracingInfoFactory = tracingInfoFactory;
+  }
+
+  @Override
+  public TracingInfoFactory getTracingInfoFactory() {
+    return tracingInfoFactory;
   }
 
   @Override
@@ -149,7 +162,6 @@ class SessionManager extends AbstractSession {
       execute(future, statement);
       return future;
     } else {
-      final Context context = Context.current();
       // If the session is not initialized, we can't call makeRequestMessage() synchronously,
       // because it
       // requires internal Cluster state that might not be initialized yet (like the protocol
@@ -157,6 +169,7 @@ class SessionManager extends AbstractSession {
       // Because of the way the future is built, we need another 'proxy' future that we can return
       // now.
       final ChainedResultSetFuture chainedFuture = new ChainedResultSetFuture();
+      final TracingInfo tracingInfo = tracingInfoFactory.buildTracingInfo();
       this.initAsync()
           .addListener(
               new Runnable() {
@@ -167,7 +180,7 @@ class SessionManager extends AbstractSession {
                           SessionManager.this,
                           cluster.manager.protocolVersion(),
                           makeRequestMessage(statement, null));
-                  execute(actualFuture, statement, context);
+                  execute(actualFuture, statement, tracingInfo);
                   chainedFuture.setSource(actualFuture);
                 }
               },
@@ -709,20 +722,22 @@ class SessionManager extends AbstractSession {
    * and handle host failover.
    */
   void execute(
-      final RequestHandler.Callback callback, final Statement statement, final Context context) {
+      final RequestHandler.Callback callback,
+      final Statement statement,
+      final TracingInfo tracingInfo) {
     if (this.isClosed()) {
       callback.onException(
           null, new IllegalStateException("Could not send request, session is closed"), 0, 0);
       return;
     }
-    if (isInit) new RequestHandler(this, callback, statement, context).sendRequest();
+    if (isInit) new RequestHandler(this, callback, statement, tracingInfo).sendRequest();
     else
       this.initAsync()
           .addListener(
               new Runnable() {
                 @Override
                 public void run() {
-                  new RequestHandler(SessionManager.this, callback, statement, context)
+                  new RequestHandler(SessionManager.this, callback, statement, tracingInfo)
                       .sendRequest();
                 }
               },
@@ -730,7 +745,8 @@ class SessionManager extends AbstractSession {
   }
 
   void execute(final RequestHandler.Callback callback, final Statement statement) {
-    execute(callback, statement, Context.current());
+    final TracingInfo tracingInfo = tracingInfoFactory.buildTracingInfo();
+    execute(callback, statement, tracingInfo);
   }
 
   private ListenableFuture<PreparedStatement> prepare(

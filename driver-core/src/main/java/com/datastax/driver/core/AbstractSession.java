@@ -19,8 +19,6 @@ import com.google.common.base.Function;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
 import io.netty.util.concurrent.EventExecutor;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.extension.noopapi.NoopOpenTelemetry;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -31,18 +29,8 @@ import java.util.concurrent.ExecutionException;
  * <p>This is primarly intended to make mocking easier.
  */
 public abstract class AbstractSession implements Session {
-  protected Tracer tracer = NoopOpenTelemetry.getInstance().getTracerProvider().get("com.datastax.driver");
-
   private static final boolean CHECK_IO_DEADLOCKS =
       SystemProperties.getBoolean("com.datastax.driver.CHECK_IO_DEADLOCKS", true);
-
-  public void setTracer(Tracer tracer) {
-    this.tracer = tracer;
-  }
-
-  public Tracer getTracer() {
-    return tracer;
-  }
 
   /** {@inheritDoc} */
   @Override

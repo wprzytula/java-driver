@@ -20,8 +20,8 @@ import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.exceptions.QueryValidationException;
 import com.datastax.driver.core.exceptions.UnsupportedFeatureException;
+import com.datastax.driver.core.tracing.TracingInfoFactory;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.opentelemetry.api.trace.Tracer;
 import java.io.Closeable;
 import java.util.Collection;
 import java.util.Map;
@@ -42,9 +42,18 @@ import java.util.Map;
  */
 public interface Session extends Closeable {
 
-  void setTracer(Tracer tracer);
+  /**
+   * Sets desired factory for tracing information for this Session. By default it is {@link
+   * com.datastax.driver.core.tracing.NoopTracingInfoFactory}
+   */
+  void setTracingInfoFactory(TracingInfoFactory tracingInfoFactory);
 
-  Tracer getTracer();
+  /**
+   * The tracingInfo factory class used by this Session.
+   *
+   * @return the factory used currently by this Session.
+   */
+  TracingInfoFactory getTracingInfoFactory();
 
   /**
    * The keyspace to which this Session is currently logged in, if any.
