@@ -11,7 +11,6 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
   private final Tracer tracer;
   private final Context context;
   private boolean tracingStarted;
-  private boolean tracingFinished;
   private static final String mustBeInitMsg =
       "TracingInfo.setStartTime must be called before TracingInfo.";
 
@@ -19,7 +18,6 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
     this.tracer = tracer;
     this.context = context;
     tracingStarted = false;
-    tracingFinished = false;
   }
 
   public Tracer getTracer() {
@@ -30,6 +28,10 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
     return context.with(span);
   }
 
+  private void assertStarted() {
+    assert tracingStarted : "TracingInfo.setStartTime must be called before any other method";
+  }
+
   @Override
   public void setNameAndStartTime(String name) {
     assert !tracingStarted : "TracingInfo.setStartTime may only be called once.";
@@ -37,19 +39,15 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
     span = tracer.spanBuilder(name).setParent(context).startSpan();
   }
 
-  private String makeMustBeInitMsg(String methodName) {
-    return mustBeInitMsg + methodName + ".";
-  }
-
   @Override
   public void setConsistencyLevel(ConsistencyLevel consistency) {
-    assert tracingStarted : makeMustBeInitMsg(getClass().getEnclosingMethod().getName());
+    assertStarted();
     span.setAttribute("db.scylla.consistency_level", consistency.toString());
   }
 
   @Override
   public void setStatementType(String statementType) {
-    assert tracingStarted : makeMustBeInitMsg(getClass().getEnclosingMethod().getName());
+    assertStarted();
     span.setAttribute("db.scylla.statement_type", statementType);
   }
 
@@ -65,27 +63,25 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
 
   @Override
   public void recordException(Exception exception) {
-    assert tracingStarted : makeMustBeInitMsg(getClass().getEnclosingMethod().getName());
+    assertStarted();
     span.recordException(exception);
   }
 
   @Override
   public void setStatus(StatusCode code, String description) {
-    assert tracingStarted : makeMustBeInitMsg(getClass().getEnclosingMethod().getName());
+    assertStarted();
     span.setStatus(mapStatusCode(code), description);
   }
 
   @Override
   public void setStatus(StatusCode code) {
-    assert tracingStarted : makeMustBeInitMsg(getClass().getEnclosingMethod().getName());
+    assertStarted();
     span.setStatus(mapStatusCode(code));
   }
 
   @Override
   public void tracingFinished() {
-    assert tracingStarted : makeMustBeInitMsg(getClass().getEnclosingMethod().getName());
-    assert !tracingFinished : "TracingInfo.tracingFinished may only be called once.";
-    tracingFinished = true;
+    assertStarted();
     span.end();
   }
 }
