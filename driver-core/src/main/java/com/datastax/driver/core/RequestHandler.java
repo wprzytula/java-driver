@@ -329,6 +329,7 @@ class RequestHandler {
 
     cancelPendingExecutions(execution);
 
+    tracingInfo.recordException(exception);
     tracingInfo.setStatus(TracingInfo.StatusCode.ERROR, exception.toString());
     tracingInfo.tracingFinished();
 

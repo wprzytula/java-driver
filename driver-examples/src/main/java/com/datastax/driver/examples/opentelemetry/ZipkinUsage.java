@@ -5,62 +5,13 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.tracing.TracingInfoFactory;
 import com.datastax.driver.opentelemetry.OpenTelemetryTracingInfoFactory;
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.exporter.zipkin.ZipkinSpanExporter;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
-import io.opentelemetry.sdk.resources.Resource;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import io.opentelemetry.sdk.trace.export.SpanExporter;
-import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
-
-class OpenTelemetryConfiguration {
-  private static String SERVICE_NAME = "Scylla Java driver";
-
-  public static OpenTelemetry initialize(SpanExporter spanExporter) {
-    Resource serviceNameResource =
-        Resource.create(Attributes.of(ResourceAttributes.SERVICE_NAME, SERVICE_NAME));
-
-    // Set to process the spans by the spanExporter.
-    final SdkTracerProvider tracerProvider =
-        SdkTracerProvider.builder()
-            .addSpanProcessor(SimpleSpanProcessor.create(spanExporter))
-            .setResource(Resource.getDefault().merge(serviceNameResource))
-            .build();
-    OpenTelemetrySdk openTelemetry =
-        OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).buildAndRegisterGlobal();
-
-    // Add a shutdown hook to shut down the SDK.
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread(
-                new Runnable() {
-                  @Override
-                  public void run() {
-                    tracerProvider.close();
-                  }
-                }));
-
-    // Return the configured instance so it can be used for instrumentation.
-    return openTelemetry;
-  }
-
-  public static OpenTelemetry initializeForZipkin(String ip, int port) {
-    String endpointPath = "/api/v2/spans";
-    String httpUrl = String.format("http://%s:%s", ip, port);
-
-    SpanExporter exporter =
-        ZipkinSpanExporter.builder().setEndpoint(httpUrl + endpointPath).build();
-
-    return initialize(exporter);
-  }
-}
 
 /**
- * Creates a keyspace and tables, and loads some data into them.
+ * Creates a keyspace and tables, and loads some data into them. Sends OpenTelemetry tracing data to
+ * Zipkin tracing backend
  *
  * <p>Preconditions: - a Scylla cluster is running and accessible through the contacts points
  * identified by CONTACT_POINTS and PORT and Zipkin backend is running and accessible through the
@@ -70,7 +21,7 @@ class OpenTelemetryConfiguration {
  * already exists, it will be reused; - creates two tables "simplex.songs" and "simplex.playlists".
  * If they exist already, they will be reused; - inserts a row in each table.
  */
-public class ZipkinConfiguration {
+public class ZipkinUsage {
   static String CONTACT_POINT = "127.0.0.1";
   static int PORT = 9042;
 
@@ -81,7 +32,7 @@ public class ZipkinConfiguration {
     // Workaround for setting ContextStorage to ThreadLocalContextStorage.
     System.setProperty("io.opentelemetry.context.contextStorageProvider", "default");
 
-    ZipkinConfiguration client = new ZipkinConfiguration();
+    ZipkinUsage client = new ZipkinUsage();
 
     try {
       client.connect();
