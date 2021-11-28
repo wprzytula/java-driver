@@ -51,13 +51,13 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
   }
 
   public void setStatement(String statement) {
-    if (shouldBeLogged(PrecisionLevel.FULL)) {
+    if (currentPrecisionLevelIsAtLeast(PrecisionLevel.FULL)) {
       span.setAttribute("db.scylla.statement", statement);
     }
   }
 
   public void setHostname(String hostname) {
-    if (shouldBeLogged(PrecisionLevel.FULL)) {
+    if (currentPrecisionLevelIsAtLeast(PrecisionLevel.FULL)) {
       span.setAttribute("net.peer.name", hostname);
     }
   }
@@ -102,7 +102,7 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
     span.end();
   }
 
-  private boolean shouldBeLogged(PrecisionLevel lowestAcceptablePrecision) {
-    return lowestAcceptablePrecision.comparePrecisions(precision) <= 0;
+  private boolean currentPrecisionLevelIsAtLeast(PrecisionLevel requiredLevel) {
+    return requiredLevel.comparePrecisions(precision) <= 0;
   }
 }
