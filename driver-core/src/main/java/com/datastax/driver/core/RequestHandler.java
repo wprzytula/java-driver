@@ -343,6 +343,7 @@ class RequestHandler {
   // Triggered when an execution reaches the end of the query plan.
   // This is only a failure if there are no other running executions.
   private void reportNoMoreHosts(SpeculativeExecution execution) {
+    tracingInfo.tracingFinished();
     runningExecutions.remove(execution);
     if (runningExecutions.isEmpty())
       setFinalException(
@@ -686,6 +687,7 @@ class RequestHandler {
                 CancelledSpeculativeExecutionException.INSTANCE,
                 System.nanoTime() - startTime);
           }
+          tracingInfo.tracingFinished();
           return;
         } else if (!previous.inProgress
             && queryStateRef.compareAndSet(previous, QueryState.CANCELLED_WHILE_COMPLETE)) {
@@ -698,6 +700,7 @@ class RequestHandler {
                 CancelledSpeculativeExecutionException.INSTANCE,
                 System.nanoTime() - startTime);
           }
+          tracingInfo.tracingFinished();
           return;
         }
       }
@@ -1107,10 +1110,12 @@ class RequestHandler {
     }
 
     private void setFinalException(Connection connection, Exception exception) {
+      tracingInfo.tracingFinished();
       RequestHandler.this.setFinalException(this, connection, exception);
     }
 
     private void setFinalResult(Connection connection, Message.Response response) {
+      tracingInfo.tracingFinished();
       RequestHandler.this.setFinalResult(this, connection, response);
     }
   }
