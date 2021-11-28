@@ -411,11 +411,17 @@ class RequestHandler {
 
     private volatile Connection.ResponseHandler connectionHandler;
 
+    private final TracingInfo tracingInfo;
+    private TracingInfo currentTracingInfo;
+
     SpeculativeExecution(Message.Request request, int position) {
       this.id = RequestHandler.this.id + "-" + position;
       this.request = request;
       this.position = position;
       this.queryStateRef = new AtomicReference<QueryState>(QueryState.INITIAL);
+      this.tracingInfo =
+          manager.getTracingInfoFactory().buildTracingInfo(RequestHandler.this.tracingInfo);
+      this.tracingInfo.setNameAndStartTime("speculative_execution." + position);
       if (logger.isTraceEnabled()) logger.trace("[{}] Starting", id);
     }
 
@@ -448,6 +454,8 @@ class RequestHandler {
         setFinalException(
             null,
             new DriverInternalError("An unexpected error happened while sending requests", e));
+      } finally {
+        tracingInfo.tracingFinished();
       }
     }
 
@@ -456,6 +464,9 @@ class RequestHandler {
       if (pool == null || pool.isClosed()) return false;
 
       if (logger.isTraceEnabled()) logger.trace("[{}] Querying node {}", id, host);
+
+      currentTracingInfo = manager.getTracingInfoFactory().buildTracingInfo(tracingInfo);
+      currentTracingInfo.setNameAndStartTime("query." + host);
 
       if (allowSpeculativeExecutions && nextExecutionScheduled.compareAndSet(false, true))
         scheduleExecution(speculativeExecutionPlan.nextExecution(host));
@@ -719,6 +730,7 @@ class RequestHandler {
         switch (response.type) {
           case RESULT:
             connection.release();
+            currentTracingInfo.tracingFinished();
             setFinalResult(connection, response);
             break;
           case ERROR:
@@ -729,6 +741,7 @@ class RequestHandler {
             switch (err.code) {
               case READ_TIMEOUT:
                 connection.release();
+                currentTracingInfo.tracingFinished();
                 assert err.infos instanceof ReadTimeoutException;
                 ReadTimeoutException rte = (ReadTimeoutException) err.infos;
                 retry =
@@ -749,6 +762,7 @@ class RequestHandler {
                 break;
               case WRITE_TIMEOUT:
                 connection.release();
+                currentTracingInfo.tracingFinished();
                 assert err.infos instanceof WriteTimeoutException;
                 WriteTimeoutException wte = (WriteTimeoutException) err.infos;
                 if (statement.isIdempotentWithDefault(
@@ -774,6 +788,7 @@ class RequestHandler {
                 break;
               case UNAVAILABLE:
                 connection.release();
+                currentTracingInfo.tracingFinished();
                 assert err.infos instanceof UnavailableException;
                 UnavailableException ue = (UnavailableException) err.infos;
                 retry =
@@ -793,12 +808,14 @@ class RequestHandler {
                 break;
               case OVERLOADED:
                 connection.release();
+                currentTracingInfo.tracingFinished();
                 assert exceptionToReport instanceof OverloadedException;
                 logger.warn("Host {} is overloaded.", connection.endPoint);
                 retry = computeRetryDecisionOnRequestError((OverloadedException) exceptionToReport);
                 break;
               case SERVER_ERROR:
                 connection.release();
+                currentTracingInfo.tracingFinished();
                 assert exceptionToReport instanceof ServerError;
                 logger.warn(
                     "{} replied with server error ({}), defuncting connection.",
@@ -810,6 +827,7 @@ class RequestHandler {
                 break;
               case IS_BOOTSTRAPPING:
                 connection.release();
+                currentTracingInfo.tracingFinished();
                 assert exceptionToReport instanceof BootstrappingException;
                 logger.error(
                     "Query sent to {} but it is bootstrapping. This shouldn't happen but trying next host.",
@@ -829,6 +847,7 @@ class RequestHandler {
                 if (toPrepare == null) {
                   // This shouldn't happen
                   connection.release();
+                  currentTracingInfo.tracingFinished();
                   String msg = String.format("Tried to execute unknown prepared query %s", id);
                   logger.error(msg);
                   setFinalException(connection, new DriverInternalError(msg));
@@ -845,6 +864,7 @@ class RequestHandler {
                   // pooled connection
                   // that's shared with other requests).
                   connection.release();
+                  currentTracingInfo.tracingFinished();
                   throw new IllegalStateException(
                       String.format(
                           "Statement was prepared on keyspace %s, can't execute it on %s (%s)",
@@ -866,12 +886,14 @@ class RequestHandler {
               case READ_FAILURE:
                 assert exceptionToReport instanceof ReadFailureException;
                 connection.release();
+                currentTracingInfo.tracingFinished();
                 retry =
                     computeRetryDecisionOnRequestError((ReadFailureException) exceptionToReport);
                 break;
               case WRITE_FAILURE:
                 assert exceptionToReport instanceof WriteFailureException;
                 connection.release();
+                currentTracingInfo.tracingFinished();
                 if (statement.isIdempotentWithDefault(
                     manager.cluster.getConfiguration().getQueryOptions())) {
                   retry =
@@ -882,6 +904,7 @@ class RequestHandler {
                 break;
               default:
                 connection.release();
+                currentTracingInfo.tracingFinished();
                 if (metricsEnabled()) metrics().getErrorMetrics().getOthers().inc();
                 break;
             }
@@ -893,6 +916,7 @@ class RequestHandler {
             break;
           default:
             connection.release();
+            currentTracingInfo.tracingFinished();
             setFinalResult(connection, response);
             break;
         }
@@ -942,6 +966,7 @@ class RequestHandler {
           }
 
           connection.release();
+          currentTracingInfo.tracingFinished();
 
           switch (response.type) {
             case RESULT:
@@ -988,6 +1013,7 @@ class RequestHandler {
             return false;
           }
           connection.release();
+          currentTracingInfo.tracingFinished();
           logError(
               connection.endPoint,
               new OperationTimedOutException(
@@ -1015,6 +1041,7 @@ class RequestHandler {
       Host queriedHost = current;
       try {
         connection.release();
+        currentTracingInfo.tracingFinished();
 
         if (exception instanceof ConnectionException) {
           RetryPolicy.RetryDecision decision =
@@ -1057,6 +1084,7 @@ class RequestHandler {
 
       try {
         connection.release();
+        currentTracingInfo.tracingFinished();
 
         RetryPolicy.RetryDecision decision = computeRetryDecisionOnRequestError(timeoutException);
         processRetryDecision(decision, connection, timeoutException);
