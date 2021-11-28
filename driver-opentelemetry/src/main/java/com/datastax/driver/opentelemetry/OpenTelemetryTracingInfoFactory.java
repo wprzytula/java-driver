@@ -1,21 +1,19 @@
 package com.datastax.driver.opentelemetry;
 
 import com.datastax.driver.core.tracing.NoopTracingInfoFactory;
+import com.datastax.driver.core.tracing.PrecisionLevel;
 import com.datastax.driver.core.tracing.TracingInfo;
 import com.datastax.driver.core.tracing.TracingInfoFactory;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 
-import static com.datastax.driver.opentelemetry.PrecisionLevel.NORMAL;
-
 public class OpenTelemetryTracingInfoFactory implements TracingInfoFactory {
-  private final Tracer tracer; // OpenTelemetry Tracer object
+  private final Tracer tracer;
   private final PrecisionLevel precision;
 
   public OpenTelemetryTracingInfoFactory(final Tracer tracer) {
-    this.tracer = tracer;
-    this.precision = NORMAL;
+    this(tracer, PrecisionLevel.NORMAL);
   }
 
   public OpenTelemetryTracingInfoFactory(final Tracer tracer, final PrecisionLevel precision) {
@@ -32,9 +30,9 @@ public class OpenTelemetryTracingInfoFactory implements TracingInfoFactory {
   @Override
   public TracingInfo buildTracingInfo(TracingInfo parent) {
     if (parent instanceof OpenTelemetryTracingInfo) {
-      final OpenTelemetryTracingInfo castedParent = (OpenTelemetryTracingInfo)parent;
-      return new OpenTelemetryTracingInfo(castedParent.getTracer(), castedParent.getContext(),
-              castedParent.getPrecision());
+      final OpenTelemetryTracingInfo castedParent = (OpenTelemetryTracingInfo) parent;
+      return new OpenTelemetryTracingInfo(
+          castedParent.getTracer(), castedParent.getContext(), castedParent.getPrecision());
     }
 
     return new NoopTracingInfoFactory().buildTracingInfo();

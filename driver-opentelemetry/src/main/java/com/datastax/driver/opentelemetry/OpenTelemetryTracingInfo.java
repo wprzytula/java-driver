@@ -1,8 +1,7 @@
 package com.datastax.driver.opentelemetry;
 
-import static com.datastax.driver.opentelemetry.PrecisionLevel.FULL;
-
 import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.tracing.PrecisionLevel;
 import com.datastax.driver.core.tracing.TracingInfo;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
@@ -15,11 +14,11 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
   private final PrecisionLevel precision;
   private boolean tracingStarted;
 
-  public OpenTelemetryTracingInfo(Tracer tracer, Context context, PrecisionLevel precision) {
+  OpenTelemetryTracingInfo(Tracer tracer, Context context, PrecisionLevel precision) {
     this.tracer = tracer;
     this.context = context;
     this.precision = precision;
-    tracingStarted = false;
+    this.tracingStarted = false;
   }
 
   public Tracer getTracer() {
@@ -52,13 +51,13 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
   }
 
   public void setStatement(String statement) {
-    if (accuratePrecisionLevel(FULL)) {
+    if (shouldBeLogged(PrecisionLevel.FULL)) {
       span.setAttribute("db.scylla.statement", statement);
     }
   }
 
   public void setHostname(String hostname) {
-    if (accuratePrecisionLevel(FULL)) {
+    if (shouldBeLogged(PrecisionLevel.FULL)) {
       span.setAttribute("net.peer.name", hostname);
     }
   }
@@ -103,7 +102,7 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
     span.end();
   }
 
-  private boolean accuratePrecisionLevel(PrecisionLevel lowestAcceptablePrecision) {
+  private boolean shouldBeLogged(PrecisionLevel lowestAcceptablePrecision) {
     return lowestAcceptablePrecision.comparePrecisions(precision) <= 0;
   }
 }
