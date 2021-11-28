@@ -5,134 +5,133 @@ import com.datastax.driver.core.tracing.PrecisionLevel;
 import com.datastax.driver.core.tracing.TracingInfo;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
-
 import java.util.LinkedList;
 import java.util.List;
 
 class TestTracingInfo implements TracingInfo {
 
-    private final Tracer tracer;
-    private final Context context;
-    private final PrecisionLevel precision;
+  private final Tracer tracer;
+  private final Context context;
+  private final PrecisionLevel precision;
 
-    private boolean spanStarted = false;
-    private boolean spanFinished = false;
-    private String spanName;
-    private ConsistencyLevel consistencyLevel;
-    private String statement;
-    private String hostname;
-    private String statementType;
-    private List<Exception> exceptions;
-    private StatusCode statusCode;
-    private String description;
+  private boolean spanStarted = false;
+  private boolean spanFinished = false;
+  private String spanName;
+  private ConsistencyLevel consistencyLevel;
+  private String statement;
+  private String hostname;
+  private String statementType;
+  private List<Exception> exceptions;
+  private StatusCode statusCode;
+  private String description;
 
-    TestTracingInfo(Tracer tracer, Context context, PrecisionLevel precision) {
-        this.tracer = tracer;
-        this.context = context;
-        this.precision = precision;
+  TestTracingInfo(Tracer tracer, Context context, PrecisionLevel precision) {
+    this.tracer = tracer;
+    this.context = context;
+    this.precision = precision;
+  }
+
+  public Tracer getTracer() {
+    return tracer;
+  }
+
+  public Context getContext() {
+    return context;
+  }
+
+  public PrecisionLevel getPrecision() {
+    return precision;
+  }
+
+  @Override
+  public void setNameAndStartTime(String name) {
+    this.spanStarted = true;
+    this.spanName = name;
+  }
+
+  @Override
+  public void setConsistencyLevel(ConsistencyLevel consistency) {
+    this.consistencyLevel = consistency;
+  }
+
+  public void setStatement(String statement) {
+    if (accuratePrecisionLevel(PrecisionLevel.FULL)) {
+      this.statement = statement;
     }
+  }
 
-    public Tracer getTracer() {
-        return tracer;
+  public void setHostname(String hostname) {
+    if (accuratePrecisionLevel(PrecisionLevel.FULL)) {
+      this.hostname = hostname;
     }
+  }
 
-    public Context getContext() {
-        return context;
-    }
+  @Override
+  public void setStatementType(String statementType) {
+    this.statementType = statementType;
+  }
 
-    public PrecisionLevel getPrecision() {
-        return precision;
+  @Override
+  public void recordException(Exception exception) {
+    if (this.exceptions == null) {
+      this.exceptions = new LinkedList<>();
     }
+    this.exceptions.add(exception);
+  }
 
-    @Override
-    public void setNameAndStartTime(String name) {
-        this.spanStarted = true;
-        this.spanName = name;
-    }
+  @Override
+  public void setStatus(StatusCode code) {
+    this.statusCode = code;
+  }
 
-    @Override
-    public void setConsistencyLevel(ConsistencyLevel consistency) {
-        this.consistencyLevel = consistency;
-    }
+  @Override
+  public void setStatus(StatusCode code, String description) {
+    this.statusCode = code;
+    this.description = description;
+  }
 
-    public void setStatement(String statement) {
-        if (accuratePrecisionLevel(PrecisionLevel.FULL)) {
-            this.statement = statement;
-        }
-    }
+  @Override
+  public void tracingFinished() {
+    this.spanFinished = true;
+  }
 
-    public void setHostname(String hostname) {
-        if (accuratePrecisionLevel(PrecisionLevel.FULL)) {
-            this.hostname = hostname;
-        }
-    }
+  private boolean accuratePrecisionLevel(PrecisionLevel lowestAcceptablePrecision) {
+    return lowestAcceptablePrecision.comparePrecisions(precision) <= 0;
+  }
 
-    @Override
-    public void setStatementType(String statementType) {
-        this.statementType = statementType;
-    }
+  public boolean isSpanStarted() {
+    return spanStarted;
+  }
 
-    @Override
-    public void recordException(Exception exception) {
-        if (this.exceptions == null) {
-            this.exceptions = new LinkedList<>();
-        }
-        this.exceptions.add(exception);
-    }
+  public boolean isSpanFinished() {
+    return spanFinished;
+  }
 
-    @Override
-    public void setStatus(StatusCode code) {
-        this.statusCode = code;
-    }
+  public String getSpanName() {
+    return spanName;
+  }
 
-    @Override
-    public void setStatus(StatusCode code, String description) {
-        this.statusCode = code;
-        this.description = description;
-    }
+  public ConsistencyLevel getConsistencyLevel() {
+    return consistencyLevel;
+  }
 
-    @Override
-    public void tracingFinished() {
-        this.spanFinished = true;
-    }
+  public String getStatement() {
+    return statement;
+  }
 
-    private boolean accuratePrecisionLevel(PrecisionLevel lowestAcceptablePrecision) {
-        return lowestAcceptablePrecision.comparePrecisions(precision) <= 0;
-    }
+  public String getHostname() {
+    return hostname;
+  }
 
-    public boolean isSpanStarted() {
-        return spanStarted;
-    }
+  public String getStatementType() {
+    return statementType;
+  }
 
-    public boolean isSpanFinished() {
-        return spanFinished;
-    }
+  public StatusCode getStatusCode() {
+    return statusCode;
+  }
 
-    public String getSpanName() {
-        return spanName;
-    }
-
-    public ConsistencyLevel getConsistencyLevel() {
-        return consistencyLevel;
-    }
-
-    public String getStatement() {
-        return statement;
-    }
-
-    public String getHostname() {
-        return hostname;
-    }
-
-    public String getStatementType() {
-        return statementType;
-    }
-
-    public StatusCode getStatusCode() {
-        return statusCode;
-    }
-
-    public String getDescription() {
-        return description;
-    }
+  public String getDescription() {
+    return description;
+  }
 }

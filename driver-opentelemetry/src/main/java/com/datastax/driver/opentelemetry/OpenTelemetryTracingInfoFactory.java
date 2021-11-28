@@ -1,6 +1,5 @@
 package com.datastax.driver.opentelemetry;
 
-import static com.datastax.driver.opentelemetry.PrecisionLevel.NORMAL;
 
 import com.datastax.driver.core.tracing.NoopTracingInfoFactory;
 import com.datastax.driver.core.tracing.PrecisionLevel;
