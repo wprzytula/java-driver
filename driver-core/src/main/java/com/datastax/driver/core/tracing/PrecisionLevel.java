@@ -1,4 +1,4 @@
-package com.datastax.driver.opentelemetry;
+package com.datastax.driver.core.tracing;
 
 /** The precision level of tracing data that is to be collected. May be extended in the future. */
 public enum PrecisionLevel {
@@ -12,6 +12,6 @@ public enum PrecisionLevel {
   }
 
   public int comparePrecisions(PrecisionLevel precisionLevel) {
-    return Integer.compare(precision, precisionLevel.precision);
+    return precision - precisionLevel.precision;
   }
 }
