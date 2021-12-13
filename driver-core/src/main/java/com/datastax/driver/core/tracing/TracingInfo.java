@@ -135,6 +135,27 @@ public interface TracingInfo {
   void setStatement(String statement, int limit);
 
   /**
+   * Adds provided keyspace to the trace.
+   *
+   * @param keyspace the keyspace to be set.
+   */
+  void setKeyspace(String keyspace);
+
+  /**
+   * Adds provided partition key string to the trace.
+   *
+   * @param partitionKey the partitionKey to be set.
+   */
+  void setPartitionKey(String partitionKey);
+
+  /**
+   * Adds provided table name to the trace.
+   *
+   * @param table the table name to be set.
+   */
+  void setTable(String table);
+
+  /**
    * Records in the trace that the provided exception occured.
    *
    * @param exception the exception to be recorded.

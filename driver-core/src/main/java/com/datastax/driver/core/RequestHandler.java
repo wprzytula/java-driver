@@ -75,6 +75,7 @@ class RequestHandler {
   static final String DISABLE_QUERY_WARNING_LOGS = "com.datastax.driver.DISABLE_QUERY_WARNING_LOGS";
 
   private static final int STATEMENT_MAX_LENGTH = 1000;
+  private static final int PARTITION_KEY_MAX_LENGTH = 1000;
 
   final String id;
 
@@ -169,6 +170,11 @@ class RequestHandler {
     String statementType = null;
     String statementText = null;
     int batchSize = 1;
+
+    String keyspace = null;
+    String partitionKey = null;
+    String table = null;
+
     if (statement instanceof BatchStatement) {
       statementType = "batch";
       batchSize = ((BatchStatement) statement).size();
@@ -182,6 +188,27 @@ class RequestHandler {
     } else if (statement instanceof BoundStatement) {
       statementType = "prepared";
       statementText = ((BoundStatement) statement).statement.getQueryString();
+      keyspace = ((BoundStatement) statement).getKeyspace();
+
+      ColumnDefinitions boundColumns =
+          ((BoundStatement) statement).statement.getPreparedId().boundValuesMetadata.variables;
+
+      StringBuilder partitionKeyBuilder = new StringBuilder(PARTITION_KEY_MAX_LENGTH);
+      int[] rkIndexes = ((BoundStatement) statement).statement.getPreparedId().routingKeyIndexes;
+      if (rkIndexes != null) {
+        for (int i : rkIndexes) {
+          Object value = ((BoundStatement) statement).getObject(i);
+          String valueString = (value == null) ? "NULL" : value.toString();
+          if (partitionKeyBuilder.length() > 0) partitionKeyBuilder.append(", ");
+          String columnName = boundColumns.getName(i);
+          partitionKeyBuilder.append(columnName);
+          partitionKeyBuilder.append('=');
+          partitionKeyBuilder.append(valueString);
+        }
+      }
+      partitionKey = partitionKeyBuilder.toString();
+
+      if (boundColumns.size() > 0) table = boundColumns.getTable(0);
     } else if (statement instanceof RegularStatement) {
       statementType = "regular";
       statementText = ((RegularStatement) statement).toString();
@@ -195,6 +222,9 @@ class RequestHandler {
     this.tracingInfo.setLoadBalancingPolicy(manager.loadBalancingPolicy());
     if (statementType != null) this.tracingInfo.setStatementType(statementType);
     if (statementText != null) this.tracingInfo.setStatement(statementText, STATEMENT_MAX_LENGTH);
+    if (keyspace != null) this.tracingInfo.setKeyspace(keyspace);
+    if (partitionKey != null) this.tracingInfo.setPartitionKey(partitionKey);
+    if (table != null) this.tracingInfo.setTable(table);
   }
 
   void sendRequest() {

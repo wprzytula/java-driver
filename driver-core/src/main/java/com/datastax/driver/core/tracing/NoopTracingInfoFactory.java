@@ -67,6 +67,15 @@ public class NoopTracingInfoFactory implements TracingInfoFactory {
     public void setStatement(String statement, int limit) {}
 
     @Override
+    public void setKeyspace(String keyspace) {}
+
+    @Override
+    public void setPartitionKey(String partitionKey) {}
+
+    @Override
+    public void setTable(String table) {}
+
+    @Override
     public void recordException(Exception exception) {}
 
     @Override

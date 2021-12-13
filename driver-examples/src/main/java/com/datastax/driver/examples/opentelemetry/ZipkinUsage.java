@@ -66,6 +66,7 @@ public class ZipkinUsage {
       client.connect();
       client.createSchema();
       client.loadData();
+      client.querySchema();
       System.out.println(
           "All requests have been completed. Now you can visit Zipkin at "
               + "http://"
@@ -95,6 +96,7 @@ public class ZipkinUsage {
 
   /** Creates the schema (keyspace) and tables for this example. */
   public void createSchema() {
+    session.execute("DROP KEYSPACE IF EXISTS simplex;");
     Span parentSpan = tracer.spanBuilder("create schema").startSpan();
     try (Scope parentScope = parentSpan.makeCurrent()) {
       {
@@ -113,12 +115,13 @@ public class ZipkinUsage {
         try (Scope scope = span.makeCurrent()) {
           session.executeAsync(
               "CREATE TABLE IF NOT EXISTS simplex.songs ("
-                  + "id uuid PRIMARY KEY,"
+                  + "id uuid,"
                   + "title text,"
                   + "album text,"
                   + "artist text,"
                   + "tags set<text>,"
-                  + "data blob"
+                  + "data blob,"
+                  + "PRIMARY KEY ((title, artist), album)"
                   + ");");
         } finally {
           span.end();
@@ -159,8 +162,8 @@ public class ZipkinUsage {
                 "INSERT INTO simplex.songs (id, title, album, artist, tags) "
                     + "VALUES ("
                     + "756716f7-2e54-4715-9f00-91dcbea6cf50,"
-                    + "'La Petite Tonkinoise',"
-                    + "'Bye Bye Blackbird',"
+                    + "?,"
+                    + "?,"
                     + "?,"
                     + "{'jazz', '2013'})"
                     + ";");
@@ -171,12 +174,44 @@ public class ZipkinUsage {
       Span bindSpan = tracer.spanBuilder("bind").startSpan();
       BoundStatement bound;
       try (Scope bindScope = bindSpan.makeCurrent()) {
-        bound = ps.bind("'Joséphine Baker'");
+        bound = ps.bind("La Petite Tonkinoise", "Bye Bye Blackbird", "Joséphine Baker");
       } finally {
         bindSpan.end();
       }
 
-      Span span = tracer.spanBuilder("insert simplex.playlists").startSpan();
+      Span span = tracer.spanBuilder("insert simplex.songs").startSpan();
+      try (Scope scope = span.makeCurrent()) {
+        session.execute(bound);
+      } finally {
+        span.end();
+      }
+
+    } finally {
+      parentSpan.end();
+    }
+  }
+
+  public void querySchema() {
+    Span parentSpan = tracer.spanBuilder("query schema").startSpan();
+    try (Scope parentScope = parentSpan.makeCurrent()) {
+
+      Span prepareSpan = tracer.spanBuilder("prepare").startSpan();
+      PreparedStatement ps;
+      try (Scope prepareScope = prepareSpan.makeCurrent()) {
+        ps = session.prepare("SELECT * FROM simplex.songs WHERE artist = ? AND title = ?;");
+      } finally {
+        prepareSpan.end();
+      }
+
+      Span bindSpan = tracer.spanBuilder("bind").startSpan();
+      BoundStatement bound;
+      try (Scope bindScope = bindSpan.makeCurrent()) {
+        bound = ps.bind("Joséphine Baker", "La Petite Tonkinoise");
+      } finally {
+        bindSpan.end();
+      }
+
+      Span span = tracer.spanBuilder("query simplex.songs").startSpan();
       try (Scope scope = span.makeCurrent()) {
         session.execute(bound);
       } finally {

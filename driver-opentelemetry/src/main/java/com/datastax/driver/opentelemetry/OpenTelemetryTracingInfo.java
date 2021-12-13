@@ -160,6 +160,24 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
     }
   }
 
+  @Override
+  public void setKeyspace(String keyspace) {
+    assertStarted();
+    span.setAttribute("db.scylla.keyspace", keyspace);
+  }
+
+  @Override
+  public void setPartitionKey(String partitionKey) {
+    assertStarted();
+    span.setAttribute("db.scylla.partition_key", partitionKey);
+  }
+
+  @Override
+  public void setTable(String table) {
+    assertStarted();
+    span.setAttribute("db.scylla.table", table);
+  }
+
   private io.opentelemetry.api.trace.StatusCode mapStatusCode(StatusCode code) {
     switch (code) {
       case OK:

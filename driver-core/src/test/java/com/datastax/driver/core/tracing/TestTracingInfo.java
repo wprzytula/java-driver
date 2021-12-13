@@ -47,6 +47,9 @@ public class TestTracingInfo implements TracingInfo {
   private Integer peerPort;
   private Boolean queryPaged;
   private Integer rowsCount;
+  private String keyspace;
+  private String partitionKey;
+  private String table;
 
   public TestTracingInfo(PrecisionLevel precision) {
     this.precision = precision;
@@ -133,6 +136,21 @@ public class TestTracingInfo implements TracingInfo {
       if (statement.length() > limit) statement = statement.substring(0, limit);
       this.statement = statement;
     }
+  }
+
+  @Override
+  public void setKeyspace(String keyspace) {
+    this.keyspace = keyspace;
+  }
+
+  @Override
+  public void setPartitionKey(String partitionKey) {
+    this.partitionKey = partitionKey;
+  }
+
+  @Override
+  public void setTable(String table) {
+    this.table = table;
   }
 
   @Override
@@ -225,6 +243,18 @@ public class TestTracingInfo implements TracingInfo {
 
   public String getStatement() {
     return statement;
+  }
+
+  public String getKeyspace() {
+    return keyspace;
+  }
+
+  public String getPartitionKey() {
+    return partitionKey;
+  }
+
+  public String getTable() {
+    return table;
   }
 
   public StatusCode getStatusCode() {
