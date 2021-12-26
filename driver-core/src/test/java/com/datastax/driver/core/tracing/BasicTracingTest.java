@@ -16,12 +16,18 @@
 
 package com.datastax.driver.core.tracing;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
 import com.datastax.driver.core.CCMTestsSupport;
+import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.policies.DefaultRetryPolicy;
+import com.datastax.driver.core.policies.PagingOptimizingLoadBalancingPolicy;
+import java.util.ArrayList;
 import java.util.Collection;
 import org.testng.annotations.Test;
 
@@ -49,6 +55,74 @@ public class BasicTracingTest extends CCMTestsSupport {
     assertTrue(root.isSpanStarted());
     assertTrue(root.isSpanFinished());
     assertEquals(root.getStatusCode(), TracingInfo.StatusCode.OK);
+
+    // these tags should be set for request span
+    assertEquals(root.getStatementType(), "regular");
+    assertEquals(root.getBatchSize(), new Integer(1));
+    assertEquals(root.getConsistencyLevel(), ConsistencyLevel.ONE);
+    assertNull(root.getRowsCount()); // no rows are returned in insert
+    assertTrue(root.getLoadBalancingPolicy() instanceof PagingOptimizingLoadBalancingPolicy);
+    assertTrue(root.getRetryPolicy() instanceof DefaultRetryPolicy);
+    assertFalse(root.getQueryPaged());
+    assertNull(root.getStatement()); // because of precision level NORMAL
+
+    // these tags should not be set for request span
+    assertNull(root.getPeerName());
+    assertNull(root.getPeerIP());
+    assertNull(root.getPeerPort());
+    assertNull(root.getRetryCount());
+
+    ArrayList<TracingInfo> speculativeExecutions = getChildren(spans, root);
+    assertTrue(speculativeExecutions.size() > 0);
+
+    for (TracingInfo speculativeExecutionSpan : speculativeExecutions) {
+      assertTrue(speculativeExecutionSpan instanceof TestTracingInfo);
+      TestTracingInfo tracingInfo = (TestTracingInfo) speculativeExecutionSpan;
+
+      // these tags should not be set for speculative execution span
+      assertNull(tracingInfo.getStatementType());
+      assertNull(tracingInfo.getBatchSize());
+      assertNull(tracingInfo.getConsistencyLevel());
+      assertNull(tracingInfo.getRowsCount());
+      assertNull(tracingInfo.getLoadBalancingPolicy());
+      assertNull(tracingInfo.getRetryPolicy());
+      assertNull(tracingInfo.getQueryPaged());
+      assertNull(tracingInfo.getStatement());
+      assertNull(tracingInfo.getPeerName());
+      assertNull(tracingInfo.getPeerIP());
+      assertNull(tracingInfo.getPeerPort());
+
+      // this tag should be set for speculative execution span
+      assertTrue(tracingInfo.getRetryCount() >= 0);
+    }
+
+    ArrayList<TracingInfo> queries = new ArrayList<TracingInfo>();
+    for (TracingInfo tracingInfo : speculativeExecutions) {
+      queries.addAll(getChildren(spans, tracingInfo));
+    }
+    assertTrue(queries.size() > 0);
+
+    for (TracingInfo querySpan : queries) {
+      assertTrue(querySpan instanceof TestTracingInfo);
+      TestTracingInfo tracingInfo = (TestTracingInfo) querySpan;
+
+      // these tags should not be set for query span
+      assertNull(tracingInfo.getStatementType());
+      assertNull(tracingInfo.getBatchSize());
+      assertNull(tracingInfo.getConsistencyLevel());
+      assertNull(tracingInfo.getRowsCount());
+      assertNull(tracingInfo.getLoadBalancingPolicy());
+      assertNull(tracingInfo.getRetryPolicy());
+      assertNull(tracingInfo.getQueryPaged());
+      assertNull(tracingInfo.getStatement());
+      assertNull(tracingInfo.getRetryCount());
+
+      // these tags should be set for query span
+      assertNotNull(tracingInfo.getPeerName());
+      assertNotNull(tracingInfo.getPeerIP());
+      assertNotNull(tracingInfo.getPeerPort());
+      assertTrue(tracingInfo.getPeerPort() >= 0 && tracingInfo.getPeerPort() <= 65535);
+    }
   }
 
   private void initializeTestTracing() {
@@ -67,5 +141,16 @@ public class BasicTracingTest extends CCMTestsSupport {
     }
 
     return root;
+  }
+
+  private ArrayList<TracingInfo> getChildren(Collection<TracingInfo> spans, TracingInfo parent) {
+    ArrayList<TracingInfo> children = new ArrayList<TracingInfo>();
+    for (TracingInfo tracingInfo : spans) {
+      if (tracingInfo instanceof TestTracingInfo
+          && ((TestTracingInfo) tracingInfo).getParent() == parent) {
+        children.add(tracingInfo);
+      }
+    }
+    return children;
   }
 }

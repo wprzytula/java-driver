@@ -28,8 +28,8 @@ public class TestTracingInfo implements TracingInfo {
   private final PrecisionLevel precision;
   private TracingInfo parent = null;
 
-  private boolean spanStarted = false;
-  private boolean spanFinished = false;
+  private Boolean spanStarted = false;
+  private Boolean spanFinished = false;
   private String spanName;
   private ConsistencyLevel consistencyLevel;
   private String statement;
@@ -40,13 +40,13 @@ public class TestTracingInfo implements TracingInfo {
   private InetAddress peerIP;
   private RetryPolicy retryPolicy;
   private LoadBalancingPolicy loadBalancingPolicy;
-  private int batchSize;
-  private int retryCount;
-  private int shardID;
+  private Integer batchSize;
+  private Integer retryCount;
+  private Integer shardID;
   private String peerName;
-  private int peerPort;
+  private Integer peerPort;
   private Boolean queryPaged;
-  private int rowsCount;
+  private Integer rowsCount;
 
   public TestTracingInfo(PrecisionLevel precision) {
     this.precision = precision;
@@ -191,15 +191,15 @@ public class TestTracingInfo implements TracingInfo {
     return loadBalancingPolicy;
   }
 
-  public int getBatchSize() {
+  public Integer getBatchSize() {
     return batchSize;
   }
 
-  public int getRetryCount() {
+  public Integer getRetryCount() {
     return retryCount;
   }
 
-  public int getShardID() {
+  public Integer getShardID() {
     return shardID;
   }
 
@@ -211,7 +211,7 @@ public class TestTracingInfo implements TracingInfo {
     return peerIP;
   }
 
-  public int getPeerPort() {
+  public Integer getPeerPort() {
     return peerPort;
   }
 
@@ -219,7 +219,7 @@ public class TestTracingInfo implements TracingInfo {
     return queryPaged;
   }
 
-  public int getRowsCount() {
+  public Integer getRowsCount() {
     return rowsCount;
   }
 
