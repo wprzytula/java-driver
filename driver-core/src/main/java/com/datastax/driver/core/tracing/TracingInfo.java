@@ -163,6 +163,13 @@ public interface TracingInfo {
   void setReplicas(String replicas);
 
   /**
+   * Adds provided cache reads counter to the trace.
+   *
+   * @param cacheCounter the counter to be set.
+   */
+  void setCacheCounter(int cacheCounter);
+
+  /**
    * Records in the trace that the provided exception occured.
    *
    * @param exception the exception to be recorded.

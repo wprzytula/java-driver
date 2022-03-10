@@ -79,6 +79,9 @@ public class NoopTracingInfoFactory implements TracingInfoFactory {
     public void setReplicas(String replicas) {}
 
     @Override
+    public void setCacheCounter(int cacheCounter) {}
+
+    @Override
     public void recordException(Exception exception) {}
 
     @Override

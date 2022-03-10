@@ -1199,6 +1199,7 @@ class RequestHandler {
           }
         }
         parentTracingInfo.setReplicas(replicasBuilder.toString());
+        parentTracingInfo.setCacheCounter(buf.getInt());
       }
 
       parentTracingInfo.tracingFinished();

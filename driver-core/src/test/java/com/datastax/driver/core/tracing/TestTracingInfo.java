@@ -51,6 +51,7 @@ public class TestTracingInfo implements TracingInfo {
   private String partitionKey;
   private String table;
   private String replicas;
+  private Integer cacheCounter;
 
   public TestTracingInfo(PrecisionLevel precision) {
     this.precision = precision;
@@ -160,6 +161,11 @@ public class TestTracingInfo implements TracingInfo {
   }
 
   @Override
+  public void setCacheCounter(int cacheCounter) {
+    this.cacheCounter = cacheCounter;
+  }
+
+  @Override
   public void recordException(Exception exception) {
     if (this.exceptions == null) {
       this.exceptions = new ArrayList();
@@ -265,6 +271,10 @@ public class TestTracingInfo implements TracingInfo {
 
   public String getReplicas() {
     return replicas;
+  }
+
+  public Integer getCacheCounter() {
+    return cacheCounter;
   }
 
   public StatusCode getStatusCode() {

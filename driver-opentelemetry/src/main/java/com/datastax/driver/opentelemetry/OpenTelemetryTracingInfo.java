@@ -184,6 +184,12 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
     span.setAttribute("db.scylla.replicas", replicas);
   }
 
+  @Override
+  public void setCacheCounter(int cacheCounter) {
+    assertStarted();
+    span.setAttribute("db.scylla.cache_counter", cacheCounter);
+  }
+
   private io.opentelemetry.api.trace.StatusCode mapStatusCode(StatusCode code) {
     switch (code) {
       case OK:
