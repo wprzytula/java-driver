@@ -52,6 +52,7 @@ public class TestTracingInfo implements TracingInfo {
   private String table;
   private String replicas;
   private Integer cacheReadCount;
+  private Integer dmaReadCount;
 
   public TestTracingInfo(PrecisionLevel precision) {
     this.precision = precision;
@@ -166,6 +167,11 @@ public class TestTracingInfo implements TracingInfo {
   }
 
   @Override
+  public void setDmaReadCount(int dmaReadCount) {
+    this.dmaReadCount = dmaReadCount;
+  }
+
+  @Override
   public void recordException(Exception exception) {
     if (this.exceptions == null) {
       this.exceptions = new ArrayList();
@@ -275,6 +281,10 @@ public class TestTracingInfo implements TracingInfo {
 
   public Integer getcacheReadCount() {
     return cacheReadCount;
+  }
+
+  public Integer getDmaReadCount() {
+    return dmaReadCount;
   }
 
   public StatusCode getStatusCode() {
