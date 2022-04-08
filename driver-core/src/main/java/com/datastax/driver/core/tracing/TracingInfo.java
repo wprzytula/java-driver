@@ -184,6 +184,13 @@ public interface TracingInfo {
   void setDmaReadCount(int dmaReadCount);
 
   /**
+   * Adds provided counter of bytes read in DMA reads to the trace.
+   *
+   * @param dmaBytesRead the counter to be set.
+   */
+  void setDmaBytesRead(int dmaBytesRead);
+
+  /**
    * Records in the trace that the provided exception occured.
    *
    * @param exception the exception to be recorded.
