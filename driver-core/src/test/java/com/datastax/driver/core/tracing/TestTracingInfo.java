@@ -50,6 +50,7 @@ public class TestTracingInfo implements TracingInfo {
   private String keyspace;
   private String partitionKey;
   private String table;
+  private String operationType;
   private String replicas;
   private Integer cacheReadCount;
   private Integer dmaReadCount;
@@ -155,6 +156,11 @@ public class TestTracingInfo implements TracingInfo {
   @Override
   public void setTable(String table) {
     this.table = table;
+  }
+
+  @Override
+  public void setOperationType(String operationType) {
+    this.operationType = operationType;
   }
 
   @Override
@@ -279,6 +285,10 @@ public class TestTracingInfo implements TracingInfo {
 
   public String getTable() {
     return table;
+  }
+
+  public String getOperationType() {
+    return operationType;
   }
 
   public String getReplicas() {

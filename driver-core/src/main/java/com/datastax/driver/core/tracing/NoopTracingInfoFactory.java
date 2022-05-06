@@ -76,6 +76,9 @@ public class NoopTracingInfoFactory implements TracingInfoFactory {
     public void setTable(String table) {}
 
     @Override
+    public void setOperationType(String operationType) {}
+
+    @Override
     public void setReplicas(String replicas) {}
 
     @Override

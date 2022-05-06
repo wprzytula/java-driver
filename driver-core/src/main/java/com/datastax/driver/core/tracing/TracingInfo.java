@@ -156,6 +156,13 @@ public interface TracingInfo {
   void setTable(String table);
 
   /**
+   * Adds provided operation type (e.g. SELECT) to the trace.
+   *
+   * @param operationType the operation type to be set.
+   */
+  void setOperationType(String operationType);
+
+  /**
    * Adds provided list of contacted replicas to the trace.
    *
    * @param replicas the list of contacted replicas to be set.

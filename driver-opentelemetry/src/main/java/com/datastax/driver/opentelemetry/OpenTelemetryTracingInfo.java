@@ -179,6 +179,12 @@ public class OpenTelemetryTracingInfo implements TracingInfo {
   }
 
   @Override
+  public void setOperationType(String operationType) {
+    assertStarted();
+    span.setAttribute("db.operation", operationType);
+  }
+
+  @Override
   public void setReplicas(String replicas) {
     assertStarted();
     span.setAttribute("db.scylla.replicas", replicas);

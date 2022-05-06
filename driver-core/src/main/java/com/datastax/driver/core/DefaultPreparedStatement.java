@@ -42,6 +42,7 @@ public class DefaultPreparedStatement implements PreparedStatement {
   final Cluster cluster;
   final boolean isLWT;
   final Token.Factory partitioner;
+  final String operationType;
 
   volatile ByteBuffer routingKey;
 
@@ -66,10 +67,12 @@ public class DefaultPreparedStatement implements PreparedStatement {
     if (incomingPayload != null && incomingPayload.containsKey("opentelemetry")) {
       Map<String, ByteBuffer> incomingPayloadCopy =
           new HashMap<String, ByteBuffer>(incomingPayload);
-      incomingPayloadCopy.remove("opentelemetry");
+      ByteBuffer buf = incomingPayloadCopy.remove("opentelemetry");
+      this.operationType = new String(buf.array(), buf.position(), buf.limit() - buf.position());
       if (incomingPayloadCopy.isEmpty()) this.incomingPayload = null;
       else this.incomingPayload = ImmutableMap.copyOf(incomingPayloadCopy);
     } else {
+      this.operationType = null;
       this.incomingPayload = incomingPayload;
     }
     this.cluster = cluster;
@@ -323,5 +326,11 @@ public class DefaultPreparedStatement implements PreparedStatement {
   @Override
   public boolean isLWT() {
     return isLWT;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getOperationType() {
+    return operationType;
   }
 }

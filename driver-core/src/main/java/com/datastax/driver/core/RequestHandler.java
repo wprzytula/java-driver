@@ -175,6 +175,7 @@ class RequestHandler {
     String keyspace = null;
     String partitionKey = null;
     String table = null;
+    String operationType = null;
 
     if (statement instanceof BatchStatement) {
       statementType = "batch";
@@ -190,6 +191,7 @@ class RequestHandler {
       statementType = "prepared";
       statementText = ((BoundStatement) statement).statement.getQueryString();
       keyspace = ((BoundStatement) statement).getKeyspace();
+      operationType = ((BoundStatement) statement).getOperationType();
 
       ColumnDefinitions boundColumns =
           ((BoundStatement) statement).statement.getPreparedId().boundValuesMetadata.variables;
@@ -226,6 +228,7 @@ class RequestHandler {
     if (keyspace != null) this.tracingInfo.setKeyspace(keyspace);
     if (partitionKey != null) this.tracingInfo.setPartitionKey(partitionKey);
     if (table != null) this.tracingInfo.setTable(table);
+    if (operationType != null) this.tracingInfo.setOperationType(operationType);
   }
 
   void sendRequest() {
